@@ -1,0 +1,83 @@
+Exercice 1
+
+1) Le fichier ne contient pas réelement la chaine Hello sysfs. Notre module introduit des fonctions de lecture et écriture propre à elle meme. La seule valeur qu'on peut changer est ce qui suit le Hello et ceci n'est qu'un attribut du module qu'on utilise pour afficher lorsqu'on fait une lecture. 
+2) Il suffit d'adapter la fonction hello_store pour que notre attribute kerText prend la valeur d'écriture et ensuite hello_show affiche Hello kerText c'est-à-dire Hello beer dans le cas où en écrit beer dans hello.
+
+Exercice 2
+
+1) On insere le module et en observant /proc/devices on s'apperçoit que hello est bien présent en tant que character device : 
+
+[root@pnl proc]# insmod ~/EXO-02/hellioctl.ko
+[  206.717687] helloioctl module loaded with major number : 248
+[  206.721792] IO_MAGIC : 78
+[root@pnl proc]# cat /proc/devices 
+Character devices:
+  1 mem
+  4 /dev/vc/0
+  4 tty
+  4 ttyS
+  5 /dev/tty
+  5 /dev/console
+  5 /dev/ptmx
+  7 vcs
+ 10 misc
+ 13 input
+ 21 sg
+ 29 fb
+116 alsa
+128 ptm
+136 pts
+180 usb
+189 usb_device
+202 cpu/msr
+203 cpu/cpuid
+226 drm
+248 hello
+249 hidraw
+250 usbmon
+251 bsg
+252 ptp
+253 pps
+254 rtc
+
+2)[root@pnl EXO-02]# ./hellotest 
+return: 0, buf: Hello ioctl
+
+
+
+3)[root@pnl EXO-02]# ./hellotest
+Valeur du buf : Hello ioctl� Valeur de retour : 0 
+[ 4410.443332] HELLO command called
+[ 4410.445331] WHO command called
+Valeur du buf : Hello beerl� Valeur de retour : 0 
+[root@pnl EXO-02]# rmmod hellioctl 
+[ 4410.445667] HELLO command called
+[ 4431.708173] helloioctl module unloaded
+
+Exercice 3:
+
+1) La structure pid sert à classifier des processus ou des threads. Elle est munie d'un spinlock ainsi que des pointeurs vers des structures identifiant des taches qui utilisent le pid en question. Quand un processus y est attaché, la structure pid est située dans une table de hachage ce qui permet un accès rapide et dans l'autre sens grace aux pointeurs déjà mentionnés. 
+
+2) On mesure les temps CPU user et system par chaque tick du CPU ce qui est lié à la vitesse de l'horloge du CPU. Un autre nom pour un tick est Jiffie ce qui est défini dans le kernel avec un temps de démarrage fixe appellé INITIAL_JIFFIES.
+
+3) La struct task_struct permet de définir une tache qui elle-même est liée à la struct PID qui permet d'identifier les taches par table de hachage ce qu'on peut voir avec ces lignes dans la définition de la struct :
+	/* PID/PID hash table linkage. */
+	struct pid			*thread_pid;
+	struct hlist_node		pid_links[PIDTYPE_MAX];
+	struct list_head		thread_group;
+	struct list_head		thread_node;
+
+
+Exercice 5:
+[root@pnl EXO-04]# insmod taskmonitor.ko target=1 
+[ 3933.597418] pid_t: 1, pid->level: 0
+[ 3933.599136] Thread started, pid: 1797
+[ 3933.599594] taskmonitor module loaded
+[root@pnl EXO-04]# cat /sys/kernel/taskmonitor 
+pid 1 usr 173 sys 888
+[root@pnl EXO-04]# echo -n stop > /sys/kernel/taskmonitor 
+[ 3953.974579] STOP 
+[root@pnl EXO-04]# cat /sys/kernel/taskmonitor 
+pid 1 usr 173 sys 889
+
+

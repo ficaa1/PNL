@@ -1,0 +1,3 @@
+EXERCICE 3
+Q3. Le système finit par crasher car sans un vrai init, les processus ne peuvent pas se lancer ni les daemons sur lesquels le kernel et fondé.
+Q4. On a toujours pas monté notre structure proc, on peux donc pas afficher ses contenus

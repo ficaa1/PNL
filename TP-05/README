@@ -1,0 +1,159 @@
+BILJIC Filip
+
+Exercice 1:
+2)En ouvrant le script on remarque un port série du socket TCP au port 1234. On utilisera alors ce socket pour connecter GDB à KGDB
+4)La commande thread permet de changer de fil d'éxecution (thread), mais info thread nous affiche les threads en cours d'execution. La commande monitor permet d'envoyer des commandes au moniteur a distance (notre VM). Donc la différence entre les info thread et monitor ps et le fait que info thread nous affiche les threads en éxecution grace à gdb/kgdb, sans regarder dans /proc/ alors que ps fait exactement cela. On voit alors que comme notre kernel n'a pas fini de booter, /proc/ n'est pas monté et donc la commande ps ne marche pas encore alors que info thread marche!
+5)La commande continue permet au kernel, qui jusqu'ici était en attente à cause de la commande kgdbwait, de continuer depuis un breakpoint specifié. Dans notre cas c'est le breakpoint spécifie par kgdbwait et en continuant on permet au kernel de terminer son boot.
+
+Exercice 2:
+1)La variable globale init_uts_ns est définie dans le fichier version.c qui se trouve dans init/. Cette structure est composée de 4 ou 5 champs, dépendant si CONFIG_UTS_NS est défini ou non. Le champ .name est une structure contenant des details sur le namespace.
+
+Exercice 3:
+1)Le module en init crée un thread en mode kernel qui prend en parametre la fonction my_hanging_fn qui met en sorte que le thread n'est pas interruptible. Ensuite, la fonction appele schedule_timeout qui endort le thread pendant au moins 60 secondes (60*HZ, avec HZ le nombre de ticks dans une seconde) car TASK_UNINTERRUPTIBLE.
+2) 
+	[   17.836286] Hanging module loaded
+	[   60.457633] INFO: task my_hanging_fn:1626 blocked for more than 30 seconds.
+	[   60.460762]       Tainted: G           O      5.10.17-pnl #4
+	[   60.462948] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+	[   60.463672] task:my_hanging_fn   state:D stack:15736 pid: 1626 ppid:     2 flags:0x00004080
+	[   60.464403] Call Trace:
+	[   60.464646]  __schedule+0x286/0x630
+	[   60.464961]  schedule+0x37/0xa0
+	[   60.465237]  schedule_timeout+0x188/0x290
+	[   60.465596]  ? __next_timer_interrupt+0xf0/0xf0
+	[   60.465994]  ? 0xffffffffa0000000
+	[   60.466285]  my_hanging_fn+0x2f/0x4d [hanging]
+	[   60.466682]  kthread+0x111/0x130
+	[   60.466970]  ? kthread_park+0x80/0x80
+	[   60.467330]  ret_from_fork+0x22/0x30
+	[   78.889674] done waiting
+	rmmod hanging
+	[  118.574545] Hanging module unloaded
+
+Le noyau ne crash pas. Le module etait bloqué pendant le schedule_timeout puis après les 60*HZ il est libéré.
+
+4)
+	#1  0xffffffff81b1db00 in panic (
+	    fmt=fmt@entry=0xffffffff82231df4 "hung_task: blocked tasks")
+	    at kernel/panic.c:239
+	#2  0xffffffff81b23ac6 in check_hung_uninterruptible_tasks (
+	    timeout=<optimized out>) at kernel/hung_task.c:213
+	#3  watchdog (dummy=<optimized out>) at kernel/hung_task.c:294
+	#4  0xffffffff810831b1 in kthread (_create=0xffff8880032a2800)
+	    at kernel/kthread.c:292
+	#5  0xffffffff81001862 in ret_from_fork () at arch/x86/entry/entry_64.S:296
+	#6  0x0000000000000000 in ?? ()
+
+5)
+	Task Addr               Pid   Parent [*] cpu State Thread             Command
+	0xffff888003e08000      446        2  1    0   R  0xffff888003e08a00 *khungtaskd
+
+	0xffff888003168000        1        0  0    0   S  0xffff888003168a00  systemd
+	0xffff888003169a00        3        2  0    0   D  0xffff88800316a400  rcu_gp
+	0xffff88800316a700        4        2  0    0   D  0xffff88800316b100  rcu_par_gp
+	0xffff88800316b400        5        2  0    0   D  0xffff88800316be00  kworker/0:0
+	0xffff88800316c100        6        2  0    0   D  0xffff88800316cb00  kworker/0:0H
+	0xffff88800316ce00        7        2  0    0   D  0xffff88800316d800  kworker/u2:0
+	0xffff88800316db00        8        2  0    0   D  0xffff88800316e500  mm_percpu_wq
+	0xffff888003178000       10        2  0    0   D  0xffff888003178a00  rcu_sched
+	0xffff888003179a00       12        2  0    0   D  0xffff88800317a400  kworker/0:1
+	0xffff88800317c100       15        2  0    0   D  0xffff88800317cb00  netns
+	0xffff88800317ce00       16        2  0    0   D  0xffff88800317d800  kworker/u2:1
+	0xffff888003e08000      446        2  1    0   R  0xffff888003e08a00 *khungtaskd
+	0xffff888003e09a00      448        2  0    0   D  0xffff888003e0a400  writeback
+	0xffff888003251a00      474        2  0    0   D  0xffff888003252400  kblockd
+	0xffff888003810d00      568        2  0    0   D  0xffff888003811700  ata_sff
+	0xffff8880033fdb00      588        2  0    0   D  0xffff8880033fe500  md
+	0xffff888003815b00      591        2  0    0   D  0xffff888003816500  edac-poller
+	0xffff88800381e800      694        2  0    0   D  0xffff88800381f200  kworker/0:1H
+	0xffff88800381db00      695        2  0    0   D  0xffff88800381e500  rpciod
+	0xffff88800381a700      696        2  0    0   D  0xffff88800381b100  kworker/u3:0
+	0xffff88800381ce00      697        2  0    0   D  0xffff88800381d800  xprtiod
+	0xffff888003818d00      700        2  0    0   D  0xffff888003819700  cfg80211
+	0xffff888003bdce00      724        2  0    0   D  0xffff888003bdd800  nfsiod
+	0xffff888003e0c100      744        2  0    0   D  0xffff888003e0cb00  acpi_thermal_pm
+	0xffff888003abce00      817        2  0    0   D  0xffff888003abd800  scsi_tmf_0
+	0xffff888003e10000      822        2  0    0   D  0xffff888003e10a00  scsi_tmf_1
+	0xffff888003e13400      826        2  0    0   D  0xffff888003e13e00  kworker/u2:2
+	0xffff888003e14100      827        2  0    0   D  0xffff888003e14b00  kworker/u2:3
+	0xffff8880033fc100      851        2  0    0   D  0xffff8880033fcb00  kworker/u2:4
+	0xffff888003811a00      876        2  0    0   R  0xffff888003812400  kworker/0:2
+	0xffff888003a9b400      964        2  0    0   D  0xffff888003a9be00  ipv6_addrconf
+	0xffff888003252700      983        2  0    0   D  0xffff888003253100  ext4-rsv-conver
+	0xffff888003250d00     1006        1  0    0   R  0xffff888003251700  systemd-journal
+	0xffff888006044e00     1543        1  0    0   S  0xffff888006045800  systemd-udevd
+	0xffff888006045b00     1546        1  0    0   S  0xffff888006046500  systemd-network
+	0xffff888005de9a00     1579        2  0    0   D  0xffff888005dea400  ext4-rsv-conver
+	0xffff888005deb400     1582        1  0    0   S  0xffff888005debe00  acpid
+	0xffff888005de8000     1583        1  0    0   S  0xffff888005de8a00  dbus-daemon
+	0xffff888005dec100     1584        1  0    0   S  0xffff888005decb00  systemd-logind
+	0xffff888005dedb00     1587        1  0    0   S  0xffff888005dee500  login
+	0xffff888005de8d00     1588        1  0    0   S  0xffff888005de9700  login
+	0xffff888003a98d00     1608        1  0    0   S  0xffff888003a99700  systemd
+	0xffff888003a9db00     1609     1608  0    0   S  0xffff888003a9e500  (sd-pam)
+	0xffff888003a98000     1615     1587  0    0   S  0xffff888003a98a00  bash
+	0xffff888003a99a00     1616     1588  0    0   S  0xffff888003a9a400  bash
+	0xffff888003a9c100     1630        2  0    0   D  0xffff888003a9cb00  my_hanging_fn
+
+6) 
+	(gdb) monitor lsmod
+	Module                  Size  modstruct     Used by
+	hanging                16384  0xffffffffa0002000    0  (Live) 0xffffffffa0000000 [ ]
+
+7) On change dans hanging.c TASK_UNINTERRUPTIBLE en TASK_INTERRUPTIBLE
+
+Exercice 4:
+
+1) On utilise la librairie /linux/timer.h qui sert a mettre en place un timer qui, quand le timer expire, lance une fonction. On initialise cela avec la fonction timer_setup qui prend le timer prdebug_timer et lance a son expiration la fonction prdebug_timeout. La fonction mod_timer configure la durée du timer.
+
+2) On trouve ceci dans le fichier control du debugfs
+/home/ficaa1/PNL/TP-05/EXO-04/prdebug.c:19 [prdebug]prdebug_timeout =_ "reactivating timer\012"
+/home/ficaa1/PNL/TP-05/EXO-04/prdebug.c:16 [prdebug]prdebug_timeout =_ "nr irqs %lu\012"
+
+Il faut ajouter dans le Makefile 
+CFLAGS_prdebug.o := -DDEBUG
+      sinon pr_debug est ignoré à la compilation.
+
+Exercice 5:
+2)
+	[root@pnl EXO-05]# insmod kcpustat.ko
+	[  250.232987] kcpustat: loading out-of-tree module taints kernel.
+	[  250.236516] Greedy module loaded
+	[root@pnl EXO-05]# 
+	Entering kdb (current=0xffff888005aa8000, pid 1647) on processor 0 Oops: (null)
+	due to oops @ 0xffffffffa000021a
+	CPU: 0 PID: 1647 Comm: my_kcpustat_fn Tainted: G           O      5.10.17-pnl #5
+	Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.13.0-1ubuntu1.1 04/01/2014
+	RIP: 0010:print_stats+0xca/0x110 [kcpustat]
+	Code: 1e 00 00 4c 89 5b 08 49 81 f8 00 20 00 a0 0f 84 cb 00 00 00 49 8d 79 50 4c 89 d5 4c 89 d6 49 8d 48 10 4c 89 c8 eb 03 48 8b 10 <48> 03 11 48 83 c0 08 48 83 c1 08 48 89 50 f8 48 39 c7 75 e9 49 8b
+	RSP: 0018:ffffc900001ffe88 EFLAGS: 00010287
+	RAX: ffffc900001ffe88 RBX: ffff888005870c00 RCX: dead000000000110
+	RDX: 00000000001e8480 RSI: dead000000000100 RDI: ffffc900001ffed8
+	RBP: dead000000000100 R08: dead000000000100 R09: ffffc900001ffe88
+	R10: dead000000000100 R11: dead000000000122 R12: ffffc900001f7be8
+	R13: ffff888005aa8000 R14: ffffffffa0000260 R15: 0000000000000000
+	FS:  0000000000000000(0000) GS:ffff88807dc00000(0000) knlGS:0000000000000000
+	CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+	CR2: 00005631a24e7578 CR3: 000000000598a000 CR4: 00000000000006f0
+	Call Trace:
+	 my_kcpustat_fn+0x64/0x6f [kcpustat]
+	 kthread+0x111/0x130
+	 ? kthread_park+0x80/0x80
+	more> 
+
+3) 
+	(gdb) backtrace
+	#0  0xffffffffa000021a in ?? ()
+	#1  0x00000000002dc6c0 in ?? ()
+	#2  0x0000000000000000 in ?? ()
+	On a pas d'information utilisables avec backtrace et bt
+
+	(gdb) monitor lsmod
+	Module                  Size  modstruct     Used by
+	kcpustat               16384  0xffffffffa0002040    0  (Live) 0xffffffffa0000000 [ ]
+
+	(gdb) add-symbol-file ~/PNL/TP-05/EXO-05/kcpustat.o
+	add symbol table from file "/home/ficaa1/PNL/TP-05/EXO-05/kcpustat.o"
+	(y or n) y
+	Reading symbols from /home/ficaa1/PNL/TP-05/EXO-05/kcpustat.o...
+

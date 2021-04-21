@@ -1,0 +1,10 @@
+Exercice 1
+
+Question 1) On chargera le fichier .ko signifiant kernel object.
+
+Exercice 2
+
+Question 1) La structure init_uts_ns est initialisée dans /include/linux/utsname.h. Elle contient 4 champs d'autres structure, une pour le nom, une autre pour le user_namespace qui contient les uid, groupes, privileges..
+La variable est accessible grace au mot clé extern.
+Question 3) Si on ne restaure pas le uname, on aura une incoherence au niveau du noyau et le noyau ne pourra plus charger la prochaine fois.
+
